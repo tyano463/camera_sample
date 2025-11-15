@@ -39,12 +39,13 @@ void captureThreadFunc() {
         }
         queueCond.notify_one();  // wait を起こす
     }
+
+    cap.release();
 }
 
 int main() {
     std::thread capThread(captureThreadFunc);
 
-    // ---- 唯一の待ち操作 ----
     cv::Mat frame;
     {
         std::unique_lock<std::mutex> lock(queueMutex);
