@@ -49,13 +49,11 @@ int main() {
 
         queueCond.wait(lock, [] { return !frameQueue.empty() || !running; });
 
-        if (!running && frameQueue.empty()) break;
-
         cv::Mat frame = frameQueue.front();
         frameQueue.pop();
         lock.unlock();
 
-        std::string filename = "capture_" + std::to_string(savedCount) + ".jpg";
+        std::string filename = "captured.jpg";
         cv::imwrite(filename, frame);
         std::cout << filename << " を保存しました\n";
 

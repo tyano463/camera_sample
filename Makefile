@@ -1,5 +1,6 @@
 CXX 		:= g++
-CXXFLAGS	:= -g -O2 -MMD -MP
+INCLUDES	:= -I/usr/include/opencv4
+CXXFLAGS	:= -g -O2 -MMD -MP $(INCLUDES)
 LIBS 		:= -lopencv_core -lopencv_imgcodecs -lopencv_videoio -lopencv_imgproc
 
 SRCS		:= camera_sample.cpp
