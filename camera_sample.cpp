@@ -21,6 +21,7 @@ void captureThreadFunc() {
     if (!cap.isOpened()) {
         std::cerr << "カメラが開けません\n";
         running = false;
+        queueCond.notify_all();
         return;
     }
 
@@ -31,31 +32,41 @@ void captureThreadFunc() {
             continue;
         }
 
+        // ---- push 時のみ短時間ロック ----
         {
             std::lock_guard<std::mutex> lock(queueMutex);
             frameQueue.push(frame.clone());
         }
-        queueCond.notify_one();
+        queueCond.notify_one();  // wait を起こす
     }
-
-    cap.release();
 }
 
 int main() {
-
     std::thread capThread(captureThreadFunc);
 
+    // ---- 唯一の待ち操作 ----
+    cv::Mat frame;
+    {
         std::unique_lock<std::mutex> lock(queueMutex);
 
-        queueCond.wait(lock, [] { return !frameQueue.empty() || !running; });
+        // wait は pthread_cond_wait と同じ動き：
+        // → mutex を unlock して待機
+        // → 起こされたら mutex を再 lock して戻る
+        queueCond.wait(lock, [] {
+            return !frameQueue.empty() || !running;
+        });
 
-        cv::Mat frame = frameQueue.front();
-        frameQueue.pop();
-        lock.unlock();
+        if (!frameQueue.empty()) {
+            frame = frameQueue.front().clone();
+            frameQueue.pop();
+        }
+    }  // lock がここで自動 unlock（C の pthread_mutex_unlock と同じ）
 
+    if (!frame.empty()) {
         std::string filename = "captured.jpg";
         cv::imwrite(filename, frame);
         std::cout << filename << " を保存しました\n";
+    }
 
     running = false;
     queueCond.notify_all();
@@ -63,3 +74,4 @@ int main() {
 
     return 0;
 }
+
